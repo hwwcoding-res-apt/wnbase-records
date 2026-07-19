@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Business Admin Dashboard — Phase 3</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #1a1d24;
+    --panel-alt: #22262f;
+    --border: #2e333d;
+    --text: #f2f4f7;
+    --text-dim: #9aa2b1;
+    --accent: #4f7cff;
+    --green: #2ecc71;
+    --green-dark: #1e9e57;
+    --red: #ff4d5e;
+    --red-dark: #d43848;
+    --amber: #f5a623;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  header.topbar {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+
+  header.topbar h1 {
+    font-size: 1.15rem;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  header.topbar select {
+    flex: 1;
+    min-width: 200px;
+    max-width: 320px;
+    background: var(--panel-alt);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.55rem 0.75rem;
+    font-size: 0.95rem;
+  }
+
+  #alertBar {
+    position: fixed;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(94%, 520px);
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius);
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-align: center;
+    z-index: 100;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    transition: top 0.35s ease;
+  }
+  #alertBar.show { top: 14px; }
+  #alertBar.success { background: var(--green); color: #06210f; }
+  #alertBar.error { background: var(--red); color: #2b0508; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.25rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1.25rem;
+    align-items: start;
+  }
+
+  @media (max-width: 900px) {
+    .layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .panel h2 {
+    margin: 0 0 1rem 0;
+    font-size: 1.05rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .panel h2 .count-badge {
+    font-size: 0.7rem;
+    background: var(--panel-alt);
+    color: var(--text-dim);
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-weight: 500;
+  }
+
+  form.inline-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+  }
+
+  form.inline-form.stacked {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  form.inline-form input,
+  form.inline-form select,
+  form.inline-form textarea {
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 0.65rem 0.75rem;
+    font-size: 0.9rem;
+    width: 100%;
+  }
+
+  form.inline-form textarea {
+    resize: vertical;
+    min-height: 2.5rem;
+    grid-column: 1 / -1;
+  }
+
+  form.inline-form .full-row {
+    grid-column: 1 / -1;
+  }
+
+  .btn {
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 0.65rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:active { filter: brightness(0.9); }
+
+  .btn-danger { background: var(--red-dark); color: white; }
+  .btn-danger:hover { background: var(--red); }
+
+  .btn-revert {
+    background: var(--panel-alt);
+    color: var(--amber);
+    border: 1px solid var(--amber);
+    font-size: 0.7rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
+  }
+  .btn-revert:hover { background: rgba(245,166,35,0.15); }
+  .btn-revert:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    color: var(--text-dim);
+    border-color: var(--border);
+  }
+
+  /* ---------- Category List ---------- */
+
+  .item-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.65rem 0.9rem;
+  }
+
+  .item-row[draggable="true"] {
+    cursor: grab;
+  }
+
+  .drag-handle {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    cursor: grab;
+    user-select: none;
+  }
+
+  .item-row .item-name {
+    font-weight: 600;
+  }
+
+  .item-row .item-type {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-left: 0.5rem;
+    text-transform: uppercase;
+  }
+
+  .item-row button {
+    background: transparent;
+    border: none;
+    color: var(--red);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0.2rem 0.5rem;
+  }
+
+  .empty-note {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    padding: 0.5rem 0;
+  }
+
+  /* ---------- Inline Edit / Confirm (replaces prompt/confirm) ---------- */
+
+  .inline-edit-form {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+  }
+
+  .inline-edit-form input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--accent);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 0.45rem 0.6rem;
+    font-size: 0.85rem;
+    min-width: 0;
+  }
+
+  .inline-edit-form textarea {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--accent);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 0.45rem 0.6rem;
+    font-size: 0.85rem;
+    min-width: 0;
+    resize: vertical;
+  }
+
+  .inline-edit-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    flex: 1;
+  }
+
+  .btn-save-inline,
+  .btn-cancel-inline {
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0.4rem 0.55rem;
+    flex: 0 0 auto;
+  }
+
+  .btn-save-inline {
+    background: var(--green-dark);
+    color: white;
+  }
+  .btn-save-inline:hover { background: var(--green); }
+
+  .btn-cancel-inline {
+    background: var(--panel);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+  .btn-cancel-inline:hover { color: var(--text); }
+
+  .inline-confirm {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .inline-confirm .confirm-text {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    flex: 1;
+    min-width: 160px;
+  }
+
+  .inline-confirm-actions {
+    display: flex;
+    gap: 0.4rem;
+    flex: 0 0 auto;
+  }
+
+  .btn-confirm-danger {
+    background: var(--red-dark);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-confirm-danger:hover { background: var(--red); }
+
+  /* ---------- Card Table ---------- */
+
+  table.card-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  table.card-table th {
+    text-align: left;
+    color: var(--text-dim);
+    font-weight: 500;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    padding: 0.5rem 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  table.card-table td {
+    padding: 0.6rem 0.4rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  .btn-edit-inline {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.2rem 0.5rem;
+  }
+  .btn-edit-inline:hover {
+    color: #7f9fff;
+  }
+
+  .btn-danger-inline {
+    background: transparent;
+    border: none;
+    color: var(--red);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.2rem 0.5rem;
+  }
+  .btn-danger-inline:hover {
+    color: var(--red-dark);
+  }
+
+  .barcode-chip {
+    font-family: 'SF Mono', 'Courier New', monospace;
+    background: var(--panel-alt);
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+  }
+
+  /* ---------- Audit Log Sidebar ---------- */
+
+  .sidebar-panel {
+    position: sticky;
+    top: 90px;
+    max-height: calc(100vh - 110px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .log-filter {
+    margin-bottom: 0.8rem;
+  }
+
+  .log-filter select {
+    width: 100%;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 0.55rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .log-list {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding-right: 0.25rem;
+  }
+
+  .log-entry {
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 0.7rem 0.8rem;
+  }
+
+  .log-entry.positive { border-left-color: var(--green); }
+  .log-entry.negative { border-left-color: var(--red); }
+  .log-entry.reversal { border-left-color: var(--amber); }
+  .log-entry.text-edit { border-left-color: var(--blue, #4a90d9); }
+  .log-entry.account-created { border-left-color: var(--green); }
+  .log-entry.account-updated { border-left-color: var(--accent); }
+  .log-entry.account-deleted { border-left-color: var(--red); }
+
+  .badge-account {
+    background: rgba(79, 124, 255, 0.15);
+    color: var(--accent);
+  }
+
+  .log-entry .log-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .log-entry .log-timestamp {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+
+  .log-entry .log-action {
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin: 0.25rem 0;
+  }
+
+  .log-action.positive-text { color: var(--green); }
+  .log-action.negative-text { color: var(--red); }
+
+  .log-entry .log-meta {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-bottom: 0.4rem;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .badge-reverted {
+    background: rgba(245, 166, 35, 0.15);
+    color: var(--amber);
+  }
+
+  .badge-reversal {
+    background: rgba(79, 124, 255, 0.15);
+    color: var(--accent);
+  }
+
+  .log-entry-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.4rem;
+  }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="alertBar"></div>
+
+<header class="topbar">
+  <h1>🛠️ Business Admin Dashboard</h1>
+  <select id="businessSelect">
+    <option value="">— Select Business Account —</option>
+  </select>
+  <a href="index.html" class="btn btn-primary" style="text-decoration:none; margin-left:auto;">🖥️ Go to Scanner Dashboard</a>
+</header>
+
+<div class="layout">
+
+  <!-- ============ LEFT COLUMN ============ -->
+  <div class="left-column">
+
+    <!-- Business Account Manager -->
+    <div class="panel">
+      <h2>Business Accounts <span class="count-badge" id="businessCount">0</span></h2>
+
+      <form id="businessForm" class="inline-form" style="grid-template-columns: 1fr auto;">
+        <input type="text" id="businessNameInput" placeholder="New business name (e.g. Sunset Bowling)" required>
+        <button type="submit" class="btn btn-primary">Create</button>
+      </form>
+
+      <div id="businessList" class="item-list"></div>
+    </div>
+
+    <!-- Category Manager -->
+    <div class="panel">
+      <h2>Category Manager <span class="count-badge" id="categoryCount">0</span></h2>
+
+      <form id="categoryForm" class="inline-form">
+        <input type="text" id="categoryNameInput" placeholder="Category name (e.g. VIP Points)" required>
+        <select id="categoryTypeInput">
+          <option value="integer">Integer</option>
+          <option value="decimal">Decimal</option>
+          <option value="string">String (text value)</option>
+        </select>
+        <button type="submit" class="btn btn-primary">Add</button>
+      </form>
+
+      <div id="categoryList" class="item-list">
+        <div class="empty-note">Select a business account to manage categories.</div>
+      </div>
+    </div>
+
+    <!-- Card & Customer Provisioner -->
+    <div class="panel">
+      <h2>Card &amp; Customer Provisioner <span class="count-badge" id="cardCount">0</span></h2>
+
+      <form id="cardForm" class="inline-form stacked">
+        <input type="text" id="cardBarcodeInput" placeholder="Barcode string" required>
+        <input type="text" id="cardNameInput" placeholder="Customer name">
+        <textarea id="cardNotesInput" placeholder="Optional notes (e.g. VIP, allergy info, membership tier)"></textarea>
+        <div class="full-row">
+          <button type="submit" class="btn btn-primary" style="width:100%;">Provision New Card</button>
+        </div>
+      </form>
+
+      <table class="card-table">
+        <thead>
+          <tr>
+            <th>Barcode</th>
+            <th>Customer</th>
+            <th>Created</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="cardTableBody">
+          <tr><td colspan="4" class="empty-note">Select a business account to view cards.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- ============ RIGHT COLUMN ============ -->
+  <div class="right-column">
+    <div class="panel sidebar-panel">
+      <h2>Live Audit Log <span class="count-badge" id="logCount">0</span></h2>
+
+      <div class="log-filter">
+        <select id="logCardFilter">
+          <option value="">All Cards (recent store activity)</option>
+        </select>
+      </div>
+
+      <div id="logList" class="log-list">
+        <div class="empty-note">Select a business account to view activity.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="ledger.js"></script>
+<script>
+(function () {
+
+  // ---------- State ----------
+  let activeBusinessId = '';
+  let alertTimeout = null;
+  const LOG_LIMIT = 100;
+
+  // ---------- DOM References ----------
+  const businessSelect = document.getElementById('businessSelect');
+  const alertBar = document.getElementById('alertBar');
+
+  const businessForm = document.getElementById('businessForm');
+  const businessNameInput = document.getElementById('businessNameInput');
+  const businessList = document.getElementById('businessList');
+  const businessCount = document.getElementById('businessCount');
+
+  const categoryForm = document.getElementById('categoryForm');
+  const categoryNameInput = document.getElementById('categoryNameInput');
+  const categoryTypeInput = document.getElementById('categoryTypeInput');
+  const categoryList = document.getElementById('categoryList');
+  const categoryCount = document.getElementById('categoryCount');
+
+  const cardForm = document.getElementById('cardForm');
+  const cardBarcodeInput = document.getElementById('cardBarcodeInput');
+  const cardNameInput = document.getElementById('cardNameInput');
+  const cardNotesInput = document.getElementById('cardNotesInput');
+  const cardTableBody = document.getElementById('cardTableBody');
+  const cardCount = document.getElementById('cardCount');
+
+  const logCardFilter = document.getElementById('logCardFilter');
+  const logList = document.getElementById('logList');
+  const logCount = document.getElementById('logCount');
+
+  // ============================================================
+  // Seed data (only runs if storage is completely empty, so this
+  // page is testable standalone without running earlier phases).
+  // ============================================================
+  function ensureSeedData() {
+    const businesses = LedgerSystem.listBusinesses();
+    if (businesses.length > 0) return;
+
+    const biz = LedgerSystem.createBusiness({ name: 'Arcade Palace' });
+    const credits = LedgerSystem.createCategory({ businessId: biz.id, name: 'Credits', type: 'integer' });
+    const tickets = LedgerSystem.createCategory({ businessId: biz.id, name: 'Tickets', type: 'integer' });
+
+    const card = LedgerSystem.createCard({
+      businessId: biz.id,
+      barcode: '123456789',
+      customerName: 'Jane Doe',
+      customerMeta: { notes: 'VIP member' }
+    });
+
+    LedgerSystem.addValue({ cardId: card.id, categoryId: credits.id, amount: 50, employee: 'seed' });
+    LedgerSystem.addValue({ cardId: card.id, categoryId: tickets.id, amount: 10, employee: 'seed' });
+    LedgerSystem.subtractValue({ cardId: card.id, categoryId: credits.id, amount: 5, reason: 'Game play', employee: 'seed_clerk' });
+  }
+
+  // ---------- Alert Bar ----------
+
+  function showAlert(type, message) {
+    clearTimeout(alertTimeout);
+    alertBar.textContent = message;
+    alertBar.className = `${type} show`;
+    alertTimeout = setTimeout(() => alertBar.classList.remove('show'), 2800);
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str == null ? '' : str;
+    return div.innerHTML;
+  }
+
+  function formatTimestamp(iso) {
+    const d = new Date(iso);
+    return d.toLocaleString(undefined, {
+      month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+  }
+
+  // ---------- Business Select ----------
+
+  function populateBusinessSelect() {
+    const businesses = LedgerSystem.listBusinesses();
+    const prevValue = businessSelect.value;
+    businessSelect.innerHTML = '<option value="">— Select Business Account —</option>';
+    businesses.forEach(biz => {
+      const opt = document.createElement('option');
+      opt.value = biz.id;
+      opt.textContent = biz.name;
+      businessSelect.appendChild(opt);
+    });
+    // Only keep the previous selection if that business still exists.
+    if (prevValue && businesses.some(b => b.id === prevValue)) {
+      businessSelect.value = prevValue;
+      activeBusinessId = prevValue;
+    } else {
+      businessSelect.value = '';
+      activeBusinessId = '';
+    }
+  }
+
+  function renderBusinessList() {
+    const businesses = LedgerSystem.listBusinesses();
+    businessCount.textContent = businesses.length;
+    businessList.innerHTML = '';
+
+    if (businesses.length === 0) {
+      businessList.innerHTML = '<div class="empty-note">No business accounts yet. Create one above.</div>';
+      return;
+    }
+
+    businesses.forEach(biz => {
+      const row = document.createElement('div');
+      row.className = 'item-row';
+      row.innerHTML = `
+        <div>
+          <span class="item-name">${escapeHtml(biz.name)}</span>
+          ${biz.id === activeBusinessId ? '<span class="item-type">active</span>' : ''}
+        </div>
+        <div>
+          <button class="btn-edit-inline" title="Rename business" aria-label="Rename business">✎</button>
+          <button class="btn-delete-business" title="Delete business account" aria-label="Delete business">✕</button>
+        </div>
+      `;
+      row.querySelector('.btn-edit-inline').addEventListener('click', () => {
+        startBusinessRename(row, biz);
+      });
+      row.querySelector('.btn-delete-business').addEventListener('click', () => {
+        startBusinessDeleteConfirm(row, biz);
+      });
+      businessList.appendChild(row);
+    });
+  }
+
+  function startBusinessRename(row, biz) {
+    row.innerHTML = '';
+    const form = document.createElement('form');
+    form.className = 'inline-edit-form';
+    form.innerHTML = `
+      <input type="text" class="rename-input" value="${escapeHtml(biz.name)}" required />
+      <button type="submit" class="btn-save-inline" title="Save">✓</button>
+      <button type="button" class="btn-cancel-inline" title="Cancel">✕</button>
+    `;
+    row.appendChild(form);
+
+    const input = form.querySelector('.rename-input');
+    input.focus();
+    input.select();
+
+    form.querySelector('.btn-cancel-inline').addEventListener('click', () => renderBusinessList());
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const newName = input.value.trim();
+      if (!newName) {
+        showAlert('error', 'Business name cannot be empty.');
+        return;
+      }
+      try {
+        LedgerSystem.updateBusiness(biz.id, { name: newName });
+        showAlert('success', `Renamed to "${newName}".`);
+        populateBusinessSelect();
+        refreshAll();
+      } catch (err) {
+        showAlert('error', err.message);
+      }
+    });
+  }
+
+  function startBusinessDeleteConfirm(row, biz) {
+    row.innerHTML = `
+      <div class="inline-confirm">
+        <span class="confirm-text">Delete "${escapeHtml(biz.name)}"? Removes its categories, cards &amp; audit history.</span>
+        <div class="inline-confirm-actions">
+          <button class="btn-confirm-danger">Delete</button>
+          <button class="btn-cancel-inline">Cancel</button>
+        </div>
+      </div>
+    `;
+    row.querySelector('.btn-cancel-inline').addEventListener('click', () => renderBusinessList());
+    row.querySelector('.btn-confirm-danger').addEventListener('click', () => {
+      try {
+        LedgerSystem.deleteBusiness(biz.id);
+        showAlert('success', `Business "${biz.name}" deleted.`);
+        if (activeBusinessId === biz.id) {
+          activeBusinessId = '';
+        }
+        populateBusinessSelect();
+        refreshAll();
+      } catch (err) {
+        showAlert('error', err.message);
+      }
+    });
+  }
+
+  businessForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = businessNameInput.value.trim();
+    if (!name) {
+      showAlert('error', 'Business name is required.');
+      return;
+    }
+    try {
+      const biz = LedgerSystem.createBusiness({ name });
+      showAlert('success', `Business "${name}" created.`);
+      businessForm.reset();
+      populateBusinessSelect();
+      businessSelect.value = biz.id;
+      activeBusinessId = biz.id;
+      refreshAll();
+    } catch (err) {
+      showAlert('error', err.message);
+    }
+  });
+
+  businessSelect.addEventListener('change', () => {
+    activeBusinessId = businessSelect.value;
+    refreshAll();
+  });
+
+  // ---------- Master Refresh ----------
+
+  function refreshAll() {
+    renderBusinessList();
+    renderCategoryList();
+    renderCardTable();
+    renderLogFilterOptions();
+    renderLogList();
+  }
+
+  // ============================================================
+  // Category Manager
+  // ============================================================
+
+  function renderCategoryList() {
+    categoryList.innerHTML = '';
+
+    if (!activeBusinessId) {
+      categoryList.innerHTML = '<div class="empty-note">Select a business account to manage categories.</div>';
+      categoryCount.textContent = '0';
+      return;
+    }
+
+    const categories = LedgerSystem.listCategoriesForBusiness(activeBusinessId, true);
+    categoryCount.textContent = categories.length;
+
+    if (categories.length === 0) {
+      categoryList.innerHTML = '<div class="empty-note">No categories yet. Add one above.</div>';
+      return;
+    }
+
+    categories.forEach(cat => {
+      const row = document.createElement('div');
+      row.className = 'item-row';
+      row.draggable = true;
+      row.dataset.categoryId = cat.id;
+      row.innerHTML = `
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <span class="drag-handle" title="Drag to reorder" aria-label="Drag to reorder">⠿</span>
+          <span class="item-name">${escapeHtml(cat.name)}</span>
+          <span class="item-type">${cat.type}</span>
+        </div>
+        <div>
+          <button class="btn-edit-inline" title="Rename category" aria-label="Rename category">✎</button>
+          <button class="btn-deactivate-category" title="Deactivate category" aria-label="Delete category">✕</button>
+        </div>
+      `;
+      row.querySelector('.btn-edit-inline').addEventListener('click', () => {
+        startCategoryRename(row, cat);
+      });
+      row.querySelector('.btn-deactivate-category').addEventListener('click', () => {
+        startCategoryDeactivateConfirm(row, cat);
+      });
+
+      attachDragEvents(row);
+      categoryList.appendChild(row);
+    });
+  }
+
+  function startCategoryRename(row, cat) {
+    row.draggable = false;
+    row.innerHTML = '';
+    const form = document.createElement('form');
+    form.className = 'inline-edit-form';
+    form.innerHTML = `
+      <input type="text" class="rename-input" value="${escapeHtml(cat.name)}" required />
+      <button type="submit" class="btn-save-inline" title="Save">✓</button>
+      <button type="button" class="btn-cancel-inline" title="Cancel">✕</button>
+    `;
+    row.appendChild(form);
+
+    const input = form.querySelector('.rename-input');
+    input.focus();
+    input.select();
+
+    form.querySelector('.btn-cancel-inline').addEventListener('click', () => renderCategoryList());
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const newName = input.value.trim();
+      if (!newName) {
+        showAlert('error', 'Category name cannot be empty.');
+        return;
+      }
+      try {
+        LedgerSystem.updateCategory(cat.id, { name: newName });
+        showAlert('success', `Renamed to "${newName}".`);
+        refreshAll();
+      } catch (err) {
+        showAlert('error', err.message);
+      }
+    });
+  }
+
+  function startCategoryDeactivateConfirm(row, cat) {
+    row.draggable = false;
+    row.innerHTML = `
+      <div class="inline-confirm">
+        <span class="confirm-text">Deactivate "${escapeHtml(cat.name)}"? Balances are preserved but it won't appear for new transactions.</span>
+        <div class="inline-confirm-actions">
+          <button class="btn-confirm-danger">Deactivate</button>
+          <button class="btn-cancel-inline">Cancel</button>
+        </div>
+      </div>
+    `;
+    row.querySelector('.btn-cancel-inline').addEventListener('click', () => renderCategoryList());
+    row.querySelector('.btn-confirm-danger').addEventListener('click', () => {
+      try {
+        LedgerSystem.deactivateCategory(cat.id);
+        showAlert('success', `Category "${cat.name}" deactivated.`);
+        refreshAll();
+      } catch (err) {
+        showAlert('error', err.message);
+      }
+    });
+  }
+
+  // ---------- Drag-and-drop category reordering ----------
+
+  let dragSourceRow = null;
+
+  function attachDragEvents(row) {
+    row.addEventListener('dragstart', () => {
+      dragSourceRow = row;
+      row.style.opacity = '0.4';
+    });
+
+    row.addEventListener('dragend', () => {
+      row.style.opacity = '';
+      dragSourceRow = null;
+    });
+
+    row.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (!dragSourceRow || dragSourceRow === row) return;
+
+      const rect = row.getBoundingClientRect();
+      const midpoint = rect.top + rect.height / 2;
+      if (e.clientY < midpoint) {
+        row.parentNode.insertBefore(dragSourceRow, row);
+      } else {
+        row.parentNode.insertBefore(dragSourceRow, row.nextSibling);
+      }
+    });
+
+    row.addEventListener('drop', (e) => {
+      e.preventDefault();
+      persistCategoryOrder();
+    });
+  }
+
+  function persistCategoryOrder() {
+    if (!activeBusinessId) return;
+    const orderedIds = Array.from(categoryList.querySelectorAll('.item-row'))
+      .map(row => row.dataset.categoryId);
+    try {
+      LedgerSystem.reorderCategories(activeBusinessId, orderedIds);
+      showAlert('success', 'Category order updated.');
+    } catch (err) {
+      showAlert('error', err.message);
+    }
+  }
+
+  categoryForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    if (!activeBusinessId) {
+      showAlert('error', 'Select a business account first.');
+      return;
+    }
+
+    const name = categoryNameInput.value.trim();
+    const type = categoryTypeInput.value;
+
+    if (!name) {
+      showAlert('error', 'Category name is required.');
+      return;
+    }
+
+    try {
+      LedgerSystem.createCategory({ businessId: activeBusinessId, name, type });
+      showAlert('success', `Category "${name}" created.`);
+      categoryForm.reset();
+      refreshAll();
+    } catch (err) {
+      showAlert('error', err.message);
+    }
+  });
+
+  // ============================================================
+  // Card & Customer Provisioner
+  // ============================================================
+
+  function renderCardTable() {
+    cardTableBody.innerHTML = '';
+
+    if (!activeBusinessId) {
+      cardTableBody.innerHTML = '<tr><td colspan="4" class="empty-note">Select a business account to view cards.</td></tr>';
+      cardCount.textContent = '0';
+      return;
+    }
+
+    const db = LedgerSystem._dumpDB();
+    const cards = db.cards.filter(c => c.businessId === activeBusinessId);
+    cardCount.textContent = cards.length;
+
+    if (cards.length === 0) {
+      cardTableBody.innerHTML = '<tr><td colspan="4" class="empty-note">No cards provisioned yet.</td></tr>';
+      return;
+    }
+
+    cards
+      .slice()
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .forEach(card => {
+        const tr = document.createElement('tr');
+        renderCardRow(tr, card);
+        cardTableBody.appendChild(tr);
+      });
+  }
+
+  function renderCardRow(tr, card) {
+    const notes = card.customerMeta && card.customerMeta.notes ? card.customerMeta.notes : '';
+    tr.innerHTML = `
+      <td><span class="barcode-chip">${escapeHtml(card.barcode)}</span></td>
+      <td>
+        ${escapeHtml(card.customerName || '—')}
+        ${notes ? `<div class="empty-note" style="padding:0;">${escapeHtml(notes)}</div>` : ''}
+      </td>
+      <td>${formatTimestamp(card.createdAt)}</td>
+      <td>
+        <button class="btn-edit-inline" title="Edit user" aria-label="Edit user">✎</button>
+        <button class="btn-danger-inline" title="Delete user" aria-label="Delete user">✕</button>
+      </td>
+    `;
+    tr.querySelector('.btn-edit-inline').addEventListener('click', () => {
+      startCardEdit(tr, card);
+    });
+    tr.querySelector('.btn-danger-inline').addEventListener('click', () => {
+      startCardDeleteConfirm(tr, card);
+    });
+  }
+
+  function startCardEdit(tr, card) {
+    const notes = card.customerMeta && card.customerMeta.notes ? card.customerMeta.notes : '';
+    tr.innerHTML = `
+      <td><input type="text" class="rename-input edit-barcode" value="${escapeHtml(card.barcode)}" /></td>
+      <td>
+        <div class="inline-edit-stack">
+          <input type="text" class="rename-input edit-name" value="${escapeHtml(card.customerName || '')}" placeholder="Customer name" />
+          <textarea class="edit-notes" rows="2" placeholder="Notes">${escapeHtml(notes)}</textarea>
+        </div>
+      </td>
+      <td>${formatTimestamp(card.createdAt)}</td>
+      <td>
+        <button class="btn-save-inline" title="Save">✓</button>
+        <button class="btn-cancel-inline" title="Cancel">✕</button>
+      </td>
+    `;
+
+    const barcodeInput = tr.querySelector('.edit-barcode');
+    barcodeInput.focus();
+    barcodeInput.select();
+
+    tr.querySelector('.btn-cancel-inline').addEventListener('click', () => renderCardRow(tr, card));
+
+    tr.querySelector('.btn-save-inline').addEventListener('click', () => {
+      const barcode = tr.querySelector('.edit-barcode').value.trim();
+      const name = tr.querySelector('.edit-name').value.trim();
+      const notesValue = tr.querySelector('.edit-notes').value.trim();
+
+      if (!barcode) {
+        showAlert('error', 'Barcode cannot be empty.');
+        return;
+      }
+
+      try {
+        const updated = LedgerSystem.updateCard(card.id, {
+          barcode,
+          customerName: name,
+          customerMeta: notesValue ? { notes: notesValue } : {}
+        });
+        showAlert('success', `Updated "${name || updated.barcode}".`);
+        refreshAll();
+      } catch (err) {
+        showAlert('error', err.message);
+      }
+    });
+  }
+
+  function startCardDeleteConfirm(tr, card) {
+    tr.innerHTML = `
+      <td colspan="4">
+        <div class="inline-confirm">
+          <span class="confirm-text">Delete user "${escapeHtml(card.customerName || card.barcode)}"? Removes their wallets &amp; audit history.</span>
+          <div class="inline-confirm-actions">
+            <button class="btn-confirm-danger">Delete</button>
+            <button class="btn-cancel-inline">Cancel</button>
+          </div>
+        </div>
+      </td>
+    `;
+    tr.querySelector('.btn-cancel-inline').addEventListener('click', () => renderCardRow(tr, card));
+    tr.querySelector('.btn-confirm-danger').addEventListener('click', () => {
+      try {
+        LedgerSystem.deleteCard(card.id);
+        showAlert('success', `User "${card.customerName || card.barcode}" deleted.`);
+        refreshAll();
+      } catch (err) {
+        showAlert('error', err.message);
+      }
+    });
+  }
+
+  cardForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    if (!activeBusinessId) {
+      showAlert('error', 'Select a business account first.');
+      return;
+    }
+
+    const barcode = cardBarcodeInput.value.trim();
+    const customerName = cardNameInput.value.trim();
+    const notes = cardNotesInput.value.trim();
+
+    if (!barcode) {
+      showAlert('error', 'Barcode string is required.');
+      return;
+    }
+
+    try {
+      const card = LedgerSystem.createCard({
+        businessId: activeBusinessId,
+        barcode,
+        customerName,
+        customerMeta: notes ? { notes } : {}
+      });
+
+      // Automatically assign a starting balance of 0 for every active
+      // category by writing an explicit zero-delta ledger entry. This
+      // materializes the wallet immediately (rather than lazily on first
+      // transaction) so the card shows a full, consistent wallet set
+      // from the moment it's provisioned.
+      const categories = LedgerSystem.listCategoriesForBusiness(activeBusinessId, true);
+      categories.forEach(cat => {
+        try {
+          LedgerSystem.addValue({
+            cardId: card.id,
+            categoryId: cat.id,
+            amount: 0,
+            reason: 'Initial balance on provisioning',
+            employee: 'admin'
+          });
+        } catch (err) {
+          // Non-fatal: some category types may reject a 0 amount edge case.
+          console.warn('Could not initialize wallet for category', cat.name, err.message);
+        }
+      });
+
+      showAlert('success', `Card "${barcode}" provisioned for ${customerName || 'customer'}.`);
+      cardForm.reset();
+      refreshAll();
+    } catch (err) {
+      showAlert('error', err.message);
+    }
+  });
+
+  // ============================================================
+  // Live Audit Log Sidebar
+  // ============================================================
+
+  function renderLogFilterOptions() {
+    const prevValue = logCardFilter.value;
+    logCardFilter.innerHTML = '<option value="">All Cards (recent store activity)</option>';
+
+    if (!activeBusinessId) return;
+
+    const db = LedgerSystem._dumpDB();
+    const cards = db.cards.filter(c => c.businessId === activeBusinessId);
+
+    cards.forEach(card => {
+      const opt = document.createElement('option');
+      opt.value = card.id;
+      opt.textContent = `${card.customerName || 'Unnamed'} — ${card.barcode}`;
+      logCardFilter.appendChild(opt);
+    });
+
+    if (prevValue) logCardFilter.value = prevValue;
+  }
+
+  logCardFilter.addEventListener('change', renderLogList);
+
+  function renderLogList() {
+    logList.innerHTML = '';
+
+    if (!activeBusinessId) {
+      logList.innerHTML = '<div class="empty-note">Select a business account to view activity.</div>';
+      logCount.textContent = '0';
+      return;
+    }
+
+    const cardId = logCardFilter.value || null;
+    const logs = LedgerSystem.getLogsForBusiness(activeBusinessId, { cardId, limit: LOG_LIMIT });
+    logCount.textContent = logs.length;
+
+    if (logs.length === 0) {
+      logList.innerHTML = '<div class="empty-note">No activity recorded yet.</div>';
+      return;
+    }
+
+    const db = LedgerSystem._dumpDB();
+    const cardsById = Object.fromEntries(db.cards.map(c => [c.id, c]));
+    const categoriesById = Object.fromEntries(db.categories.map(c => [c.id, c]));
+
+    logs.forEach(log => {
+      logList.appendChild(buildLogEntry(log, cardsById, categoriesById));
+    });
+  }
+
+  function buildLogEntry(log, cardsById, categoriesById) {
+    if (log.type === 'account') {
+      return buildAccountLogEntry(log);
+    }
+    return buildTransactionLogEntry(log, cardsById, categoriesById);
+  }
+
+  function buildAccountLogEntry(log) {
+    const el = document.createElement('div');
+
+    const variant = (log.action || '').endsWith('_created') ? 'account-created'
+      : (log.action || '').endsWith('_deleted') ? 'account-deleted'
+      : 'account-updated';
+
+    el.className = 'log-entry ' + variant;
+
+    el.innerHTML = `
+      <div class="log-top">
+        <div class="log-timestamp">${formatTimestamp(log.timestamp)}</div>
+        <div><span class="badge badge-account">Account</span></div>
+      </div>
+      <div class="log-action">${escapeHtml(log.details || log.action || 'Account event')}</div>
+      <div class="log-meta">
+        ${log.businessName ? `Business: ${escapeHtml(log.businessName)}<br>` : ''}
+        ${log.cardBarcode ? `Card: <span class="barcode-chip">${escapeHtml(log.cardBarcode)}</span><br>` : ''}
+        ${log.categoryName ? `Category: ${escapeHtml(log.categoryName)}<br>` : ''}
+        By: ${escapeHtml(log.employee)}
+      </div>
+    `;
+
+    return el;
+  }
+
+  function buildTransactionLogEntry(log, cardsById, categoriesById) {
+    const el = document.createElement('div');
+
+    const isReversal = !!log.reversalOfLogId;
+    const isTextEditEntry = log.delta === null || log.delta === undefined;
+    const isPositive = log.delta >= 0;
+
+    el.className = 'log-entry ' + (isReversal ? 'reversal' : (isTextEditEntry ? 'text-edit' : (isPositive ? 'positive' : 'negative')));
+
+    const card = cardsById[log.cardId];
+    const category = categoriesById[log.categoryId];
+    const barcode = card ? card.barcode : 'unknown card';
+    const categoryName = category ? category.name : 'unknown category';
+
+    const isTextEdit = log.delta === null || log.delta === undefined;
+    const sign = log.delta >= 0 ? '+' : '';
+    const actionText = isTextEdit
+      ? `${categoryName} updated`
+      : `${sign}${log.delta} ${categoryName}`;
+    const actionClass = isTextEdit ? '' : (log.delta >= 0 ? 'positive-text' : 'negative-text');
+
+    let badges = '';
+    if (log.reverted) {
+      badges += '<span class="badge badge-reverted">Reverted</span> ';
+    }
+    if (isReversal) {
+      badges += '<span class="badge badge-reversal">Reversal</span> ';
+    }
+
+    el.innerHTML = `
+      <div class="log-top">
+        <div class="log-timestamp">${formatTimestamp(log.timestamp)}</div>
+        <div>${badges}</div>
+      </div>
+      <div class="log-action ${actionClass}">${escapeHtml(actionText)}</div>
+      <div class="log-meta">
+        Card: <span class="barcode-chip">${escapeHtml(barcode)}</span><br>
+        ${log.reason ? escapeHtml(log.reason) + '<br>' : ''}
+        By: ${escapeHtml(log.employee)}
+      </div>
+      <div class="log-entry-footer">
+        <button class="btn-revert" ${(log.reverted || isReversal || isTextEditEntry) ? 'disabled' : ''}>
+          ${log.reverted ? 'Already Reverted' : (isReversal ? 'N/A' : (isTextEditEntry ? 'N/A' : 'Revert'))}
+        </button>
+      </div>
+    `;
+
+    const revertBtn = el.querySelector('.btn-revert');
+    if (!log.reverted && !isReversal && !isTextEditEntry) {
+      revertBtn.addEventListener('click', () => {
+        const footer = el.querySelector('.log-entry-footer');
+        footer.innerHTML = `
+          <span class="confirm-text" style="margin-right:auto;">Revert this transaction?</span>
+          <div class="inline-confirm-actions">
+            <button class="btn-confirm-danger">Confirm</button>
+            <button class="btn-cancel-inline">Cancel</button>
+          </div>
+        `;
+        footer.querySelector('.btn-cancel-inline').addEventListener('click', () => renderLogList());
+        footer.querySelector('.btn-confirm-danger').addEventListener('click', () => {
+          try {
+            LedgerSystem.revertLog(log.id, 'admin');
+            showAlert('success', `Reverted: ${actionText} on ${barcode}`);
+            refreshAll();
+          } catch (err) {
+            showAlert('error', err.message);
+          }
+        });
+      });
+    }
+
+    return el;
+  }
+
+  // ---------- Init ----------
+
+  ensureSeedData();
+  populateBusinessSelect();
+  refreshAll();
+
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Clerk Scanner Dashboard — Phase 2</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #1a1d24;
+    --panel-alt: #22262f;
+    --border: #2e333d;
+    --text: #f2f4f7;
+    --text-dim: #9aa2b1;
+    --accent: #4f7cff;
+    --green: #2ecc71;
+    --green-dark: #1e9e57;
+    --red: #ff4d5e;
+    --red-dark: #d43848;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 2rem;
+  }
+
+  /* ---------- Top Session Bar ---------- */
+
+  .session-bar {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+
+  .session-bar label {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  .session-bar select {
+    flex: 1;
+    min-width: 180px;
+    background: var(--panel-alt);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.6rem 0.75rem;
+    font-size: 1rem;
+  }
+
+  .session-status {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 999px;
+    background: var(--panel-alt);
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  .session-status.active {
+    background: rgba(46, 204, 113, 0.15);
+    color: var(--green);
+  }
+
+  /* ---------- Alert Bar ---------- */
+
+  #alertBar {
+    position: fixed;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(94%, 520px);
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius);
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-align: center;
+    z-index: 100;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    transition: top 0.35s ease;
+  }
+
+  #alertBar.show {
+    top: 14px;
+  }
+
+  #alertBar.success {
+    background: var(--green);
+    color: #06210f;
+  }
+
+  #alertBar.error {
+    background: var(--red);
+    color: #2b0508;
+  }
+
+  /* ---------- Main Content ---------- */
+
+  main {
+    flex: 1;
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+
+  /* ---------- Barcode Input Engine ---------- */
+
+  .scan-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .scan-panel label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 0.5rem;
+  }
+
+  #barcodeInput {
+    width: 100%;
+    font-size: 1.4rem;
+    padding: 1rem;
+    border-radius: var(--radius-sm);
+    border: 2px solid var(--border);
+    background: var(--panel-alt);
+    color: var(--text);
+    text-align: center;
+    letter-spacing: 0.05em;
+  }
+
+  #barcodeInput:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .scan-hint {
+    margin-top: 0.6rem;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-align: center;
+  }
+
+  /* ---------- Empty State ---------- */
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-dim);
+  }
+
+  .empty-state .icon {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.6;
+  }
+
+  /* ---------- Card / Customer Header ---------- */
+
+  .customer-header {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .customer-info h2 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.3rem;
+  }
+
+  .customer-info .barcode-tag {
+    font-family: 'SF Mono', 'Courier New', monospace;
+    background: var(--panel-alt);
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    display: inline-block;
+    margin-top: 0.3rem;
+  }
+
+  .customer-info .meta {
+    margin-top: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+
+  .btn-clear {
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.7rem 1.1rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .btn-clear:hover {
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  /* ---------- Wallet Grid ---------- */
+
+  .wallet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+  }
+
+  .wallet-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .wallet-card h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .wallet-balance {
+    font-size: 2.6rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: background 0.15s ease;
+    width: fit-content;
+  }
+
+  .wallet-balance:hover {
+    background: var(--panel-alt);
+  }
+
+  /* ---------- Wallet History Modal ---------- */
+
+  .history-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 50;
+  }
+
+  .history-overlay.hidden { display: none; }
+
+  .history-modal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 420px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .history-modal-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .history-modal-header h3 {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .history-modal-header .close-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.25rem;
+  }
+
+  .history-modal-header .close-btn:hover { color: var(--text); }
+
+  .history-modal-body {
+    padding: 1rem 1.25rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .history-entry {
+    border-left: 3px solid var(--border);
+    padding: 0.5rem 0.75rem;
+    background: var(--panel-alt);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  .history-entry.positive { border-left-color: var(--green); }
+  .history-entry.negative { border-left-color: var(--red); }
+  .history-entry.text-edit { border-left-color: var(--accent); }
+
+  .history-entry .history-action {
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+
+  .history-entry .history-action.positive-text { color: var(--green); }
+  .history-entry .history-action.negative-text { color: var(--red); }
+
+  .history-entry .history-meta {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 0.2rem;
+  }
+
+  .history-empty {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 1rem 0;
+  }
+
+  .wallet-type {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: -0.6rem;
+  }
+
+  .wallet-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-adjust {
+    flex: 0 0 auto;
+    width: 3rem;
+    height: 3rem;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-size: 1.5rem;
+    font-weight: 700;
+    cursor: pointer;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-minus {
+    background: var(--red-dark);
+  }
+  .btn-minus:active {
+    background: var(--red);
+  }
+
+  .btn-plus {
+    background: var(--green-dark);
+  }
+  .btn-plus:active {
+    background: var(--green);
+  }
+
+  .modifier-input {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    font-size: 1.2rem;
+    padding: 0.7rem 0.3rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--panel-alt);
+    color: var(--text);
+  }
+
+  .modifier-input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .btn-apply {
+    width: 100%;
+    padding: 0.85rem;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .btn-apply:active {
+    filter: brightness(0.9);
+  }
+
+  .btn-apply:disabled,
+  .btn-adjust:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .pending-action {
+    font-size: 0.75rem;
+    text-align: center;
+    color: var(--text-dim);
+    min-height: 1em;
+  }
+
+  .pending-action.add { color: var(--green); }
+  .pending-action.subtract { color: var(--red); }
+
+  .hidden { display: none !important; }
+
+  @media (max-width: 480px) {
+    .wallet-balance { font-size: 2.2rem; }
+    .customer-header { flex-direction: column; align-items: stretch; }
+    .btn-clear { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div id="alertBar"></div>
+
+<!-- ============ Active Session Simulator ============ -->
+<div class="session-bar">
+  <label for="businessSelect">Active Business Account:</label>
+  <select id="businessSelect">
+    <option value="">— Select Active Business Account —</option>
+  </select>
+  <span id="sessionStatus" class="session-status">No session</span>
+  <a href="admin.html" style="margin-left:auto; color: var(--text-dim); font-size: 0.8rem; text-decoration:none; border:1px solid var(--border); border-radius:999px; padding:0.4rem 0.8rem; white-space:nowrap;">⚙️ Admin</a>
+</div>
+
+<main>
+
+  <!-- ============ Barcode Input Engine ============ -->
+  <div class="scan-panel">
+    <label for="barcodeInput">Scan or Enter Card Barcode</label>
+    <input
+      type="text"
+      id="barcodeInput"
+      placeholder="Awaiting scan..."
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
+      disabled
+    />
+    <div class="scan-hint">Scanner input auto-submits on Enter. Select a business account to begin.</div>
+  </div>
+
+  <!-- ============ Empty State ============ -->
+  <div id="emptyState" class="empty-state">
+    <div class="icon">🪪</div>
+    <div>No card scanned yet</div>
+  </div>
+
+  <!-- ============ Customer Header ============ -->
+  <div id="customerHeader" class="customer-header hidden">
+    <div class="customer-info">
+      <h2 id="customerName">—</h2>
+      <div class="barcode-tag" id="customerBarcode">—</div>
+      <div class="meta" id="customerMeta"></div>
+    </div>
+    <button id="btnClearCard" class="btn-clear">✕ Clear / Next Card</button>
+  </div>
+
+  <!-- ============ Wallet Grid ============ -->
+  <div id="walletGrid" class="wallet-grid"></div>
+
+  <!-- ============ Wallet History Modal ============ -->
+  <div id="historyOverlay" class="history-overlay hidden">
+    <div class="history-modal">
+      <div class="history-modal-header">
+        <h3 id="historyModalTitle">History</h3>
+        <button id="historyCloseBtn" class="close-btn" aria-label="Close">&times;</button>
+      </div>
+      <div id="historyModalBody" class="history-modal-body"></div>
+    </div>
+  </div>
+
+</main>
+
+<script src="ledger.js"></script>
+<script>
+(function () {
+
+  // ---------- State ----------
+  let activeBusinessId = '';
+  let activeCard = null;
+  let alertTimeout = null;
+
+  // ---------- DOM References ----------
+  const businessSelect = document.getElementById('businessSelect');
+  const sessionStatus = document.getElementById('sessionStatus');
+  const barcodeInput = document.getElementById('barcodeInput');
+  const emptyState = document.getElementById('emptyState');
+  const customerHeader = document.getElementById('customerHeader');
+  const customerName = document.getElementById('customerName');
+  const customerBarcode = document.getElementById('customerBarcode');
+  const customerMeta = document.getElementById('customerMeta');
+  const btnClearCard = document.getElementById('btnClearCard');
+  const walletGrid = document.getElementById('walletGrid');
+  const alertBar = document.getElementById('alertBar');
+  const historyOverlay = document.getElementById('historyOverlay');
+  const historyModalTitle = document.getElementById('historyModalTitle');
+  const historyModalBody = document.getElementById('historyModalBody');
+  const historyCloseBtn = document.getElementById('historyCloseBtn');
+
+  // ============================================================
+  // Bootstrapping demo data if no businesses exist yet.
+  // (Ensures Phase 2 is testable standalone without re-running
+  //  the Phase 1 harness first.)
+  // ============================================================
+  function ensureSeedData() {
+    const businesses = LedgerSystem.listBusinesses();
+    if (businesses.length > 0) return;
+
+    const biz = LedgerSystem.createBusiness({ name: 'Arcade Palace' });
+    const credits = LedgerSystem.createCategory({ businessId: biz.id, name: 'Credits', type: 'integer' });
+    const tickets = LedgerSystem.createCategory({ businessId: biz.id, name: 'Tickets', type: 'integer' });
+    const hours = LedgerSystem.createCategory({ businessId: biz.id, name: 'Hours', type: 'decimal' });
+
+    const card = LedgerSystem.createCard({
+      businessId: biz.id,
+      barcode: '123456789',
+      customerName: 'Jane Doe',
+      customerMeta: { notes: 'VIP member' }
+    });
+
+    LedgerSystem.addValue({ cardId: card.id, categoryId: credits.id, amount: 50, employee: 'seed' });
+    LedgerSystem.addValue({ cardId: card.id, categoryId: tickets.id, amount: 10, employee: 'seed' });
+    LedgerSystem.addValue({ cardId: card.id, categoryId: hours.id, amount: 2.5, employee: 'seed' });
+  }
+
+  // ---------- Session / Business Select ----------
+
+  function populateBusinessSelect() {
+    const businesses = LedgerSystem.listBusinesses();
+    businessSelect.innerHTML = '<option value="">— Select Active Business Account —</option>';
+    businesses.forEach(biz => {
+      const opt = document.createElement('option');
+      opt.value = biz.id;
+      opt.textContent = biz.name;
+      businessSelect.appendChild(opt);
+    });
+  }
+
+  businessSelect.addEventListener('change', () => {
+    activeBusinessId = businessSelect.value;
+    resetCardView();
+
+    if (activeBusinessId) {
+      sessionStatus.textContent = 'Session Active';
+      sessionStatus.classList.add('active');
+      barcodeInput.disabled = false;
+      barcodeInput.placeholder = 'Scan card barcode...';
+      focusBarcodeInput();
+    } else {
+      sessionStatus.textContent = 'No session';
+      sessionStatus.classList.remove('active');
+      barcodeInput.disabled = true;
+      barcodeInput.placeholder = 'Awaiting scan...';
+    }
+  });
+
+  // ---------- Barcode Input Engine ----------
+
+  function focusBarcodeInput() {
+    // Slight delay helps on mobile/iPad after DOM updates or alerts.
+    setTimeout(() => barcodeInput.focus(), 50);
+  }
+
+  barcodeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleBarcodeSubmit();
+    }
+  });
+
+  function handleBarcodeSubmit() {
+    const barcode = barcodeInput.value.trim();
+    barcodeInput.value = '';
+
+    if (!barcode) return;
+
+    if (!activeBusinessId) {
+      showAlert('error', 'Select an active business account first.');
+      return;
+    }
+
+    const card = LedgerSystem.findCardByBarcode(barcode, activeBusinessId);
+
+    if (!card) {
+      showAlert('error', `No card found for barcode "${barcode}".`);
+      focusBarcodeInput();
+      return;
+    }
+
+    if (!card.active) {
+      showAlert('error', `Card "${barcode}" is inactive.`);
+      focusBarcodeInput();
+      return;
+    }
+
+    activeCard = card;
+    renderCardView();
+    focusBarcodeInput();
+  }
+
+  // ---------- Card / Customer Header + Wallet Grid ----------
+
+  function renderCardView() {
+    if (!activeCard) {
+      resetCardView();
+      return;
+    }
+
+    emptyState.classList.add('hidden');
+    customerHeader.classList.remove('hidden');
+
+    customerName.textContent = activeCard.customerName || 'Unnamed Customer';
+    customerBarcode.textContent = activeCard.barcode;
+
+    const metaEntries = Object.entries(activeCard.customerMeta || {});
+    customerMeta.textContent = metaEntries.length
+      ? metaEntries.map(([k, v]) => `${k}: ${v}`).join(' · ')
+      : '';
+
+    renderWalletGrid();
+  }
+
+  function renderWalletGrid() {
+    walletGrid.innerHTML = '';
+
+    let wallets;
+    try {
+      wallets = LedgerSystem.getWalletsForCard(activeCard.id);
+    } catch (err) {
+      showAlert('error', err.message);
+      return;
+    }
+
+    if (wallets.length === 0) {
+      walletGrid.innerHTML = '<div class="empty-state">No active categories configured for this business.</div>';
+      return;
+    }
+
+    wallets.forEach(wallet => {
+      const card = buildWalletCard(wallet);
+      walletGrid.appendChild(card);
+    });
+  }
+
+  function buildWalletCard(wallet) {
+    if (wallet.type === 'string') {
+      return buildStringWalletCard(wallet);
+    }
+
+    const el = document.createElement('div');
+    el.className = 'wallet-card';
+    el.dataset.categoryId = wallet.categoryId;
+
+    const step = wallet.type === 'decimal' ? '0.1' : '1';
+    const displayBalance = wallet.type === 'decimal'
+      ? Number(wallet.balance).toFixed(1)
+      : wallet.balance;
+
+    el.innerHTML = `
+      <h3>${escapeHtml(wallet.categoryName)}</h3>
+      <div class="wallet-type">${wallet.type === 'decimal' ? 'Decimal' : 'Integer'} balance</div>
+      <div class="wallet-balance">${displayBalance}</div>
+      <div class="wallet-controls">
+        <input
+          type="number"
+          class="modifier-input signed-input"
+          placeholder="e.g. 3 or -3"
+          step="${step}"
+          inputmode="decimal"
+        />
+      </div>
+      <div class="pending-action"></div>
+    `;
+
+    const balanceEl = el.querySelector('.wallet-balance');
+    balanceEl.title = 'View history';
+    balanceEl.addEventListener('click', () => openWalletHistory(wallet));
+
+    const modifierInput = el.querySelector('.signed-input');
+    const pendingLabel = el.querySelector('.pending-action');
+
+    function updatePendingLabel() {
+      const raw = modifierInput.value.trim();
+      if (raw === '' || raw === '-') {
+        pendingLabel.textContent = '';
+        pendingLabel.className = 'pending-action';
+        return;
+      }
+      const amount = parseFloat(raw);
+      if (isNaN(amount) || amount === 0) {
+        pendingLabel.textContent = '';
+        pendingLabel.className = 'pending-action';
+        return;
+      }
+      if (amount > 0) {
+        pendingLabel.textContent = `Enter to add ${amount}`;
+        pendingLabel.className = 'pending-action add';
+      } else {
+        pendingLabel.textContent = `Enter to subtract ${Math.abs(amount)}`;
+        pendingLabel.className = 'pending-action subtract';
+      }
+    }
+
+    modifierInput.addEventListener('input', updatePendingLabel);
+
+    modifierInput.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+
+      const raw = modifierInput.value.trim();
+      const delta = parseFloat(raw);
+
+      if (raw === '' || isNaN(delta) || delta === 0) {
+        showAlert('error', 'Enter a non-zero number (e.g. 3 or -3).');
+        return;
+      }
+
+      modifierInput.disabled = true;
+
+      try {
+        LedgerSystem.adjustBalance({
+          cardId: activeCard.id,
+          categoryId: wallet.categoryId,
+          delta: delta,
+          employee: 'clerk'
+        });
+
+        if (delta > 0) {
+          showAlert('success', `Success: Added ${delta} ${wallet.categoryName}`);
+        } else {
+          showAlert('success', `Success: Deducted ${Math.abs(delta)} ${wallet.categoryName}`);
+        }
+
+        renderWalletGrid();
+      } catch (err) {
+        showAlert('error', err.message);
+        modifierInput.disabled = false;
+      } finally {
+        focusBarcodeInput();
+      }
+    });
+
+    return el;
+  }
+
+  function buildStringWalletCard(wallet) {
+    const el = document.createElement('div');
+    el.className = 'wallet-card';
+    el.dataset.categoryId = wallet.categoryId;
+
+    el.innerHTML = `
+      <h3>${escapeHtml(wallet.categoryName)}</h3>
+      <div class="wallet-type">Text value</div>
+      <div class="wallet-balance" style="font-size:1.3rem; word-break:break-word;">${escapeHtml(wallet.balance || '—')}</div>
+      <div class="wallet-controls">
+        <input
+          type="text"
+          class="modifier-input string-input"
+          style="text-align:left;"
+          value="${escapeHtml(wallet.balance || '')}"
+          placeholder="Enter value..."
+        />
+      </div>
+      <button class="btn-apply">Save</button>
+    `;
+
+    const stringBalanceEl = el.querySelector('.wallet-balance');
+    stringBalanceEl.title = 'View history';
+    stringBalanceEl.addEventListener('click', () => openWalletHistory(wallet));
+
+    const textInput = el.querySelector('.string-input');
+    const applyBtn = el.querySelector('.btn-apply');
+
+    applyBtn.addEventListener('click', () => {
+      const newValue = textInput.value;
+
+      applyBtn.disabled = true;
+
+      try {
+        LedgerSystem.setTextValue({
+          cardId: activeCard.id,
+          categoryId: wallet.categoryId,
+          value: newValue,
+          employee: 'clerk'
+        });
+        showAlert('success', `Success: Updated ${wallet.categoryName}`);
+        renderWalletGrid();
+      } catch (err) {
+        showAlert('error', err.message);
+      } finally {
+        focusBarcodeInput();
+      }
+    });
+
+    return el;
+  }
+
+  // ---------- Wallet History Modal ----------
+
+  function openWalletHistory(wallet) {
+    historyModalTitle.textContent = `${wallet.categoryName} — History`;
+    historyModalBody.innerHTML = '';
+
+    const logs = wallet.walletId ? LedgerSystem.getLogsForWallet(wallet.walletId) : [];
+
+    if (logs.length === 0) {
+      historyModalBody.innerHTML = '<div class="history-empty">No changes recorded yet for this category.</div>';
+    } else {
+      logs.forEach(log => {
+        historyModalBody.appendChild(buildHistoryEntry(log, wallet));
+      });
+    }
+
+    historyOverlay.classList.remove('hidden');
+  }
+
+  function buildHistoryEntry(log, wallet) {
+    const el = document.createElement('div');
+    const isTextEdit = log.delta === null || log.delta === undefined;
+    const isPositive = log.delta >= 0;
+
+    el.className = 'history-entry ' + (isTextEdit ? 'text-edit' : (isPositive ? 'positive' : 'negative'));
+
+    const sign = log.delta >= 0 ? '+' : '';
+    const actionText = isTextEdit
+      ? `${wallet.categoryName} updated`
+      : `${sign}${log.delta} ${wallet.categoryName}`;
+    const actionClass = isTextEdit ? '' : (isPositive ? 'positive-text' : 'negative-text');
+
+    el.innerHTML = `
+      <div class="history-action ${actionClass}">${escapeHtml(actionText)}</div>
+      <div class="history-meta">
+        ${formatTimestamp(log.timestamp)}${log.reverted ? ' · Reverted' : ''}${log.reversalOfLogId ? ' · Reversal' : ''}
+        ${log.reason ? '<br>' + escapeHtml(log.reason) : ''}
+      </div>
+    `;
+
+    return el;
+  }
+
+  function closeWalletHistory() {
+    historyOverlay.classList.add('hidden');
+  }
+
+  historyCloseBtn.addEventListener('click', closeWalletHistory);
+  historyOverlay.addEventListener('click', (e) => {
+    if (e.target === historyOverlay) closeWalletHistory();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !historyOverlay.classList.contains('hidden')) {
+      closeWalletHistory();
+    }
+  });
+
+  function formatTimestamp(iso) {
+    const d = new Date(iso);
+    return d.toLocaleString(undefined, {
+      month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+  }
+
+  function resetCardView() {
+    activeCard = null;
+    emptyState.classList.remove('hidden');
+    customerHeader.classList.add('hidden');
+    walletGrid.innerHTML = '';
+    closeWalletHistory();
+  }
+
+  btnClearCard.addEventListener('click', () => {
+    resetCardView();
+    focusBarcodeInput();
+  });
+
+  // ---------- Alert Bar ----------
+
+  function showAlert(type, message) {
+    clearTimeout(alertTimeout);
+    alertBar.textContent = message;
+    alertBar.className = `${type} show`;
+
+    alertTimeout = setTimeout(() => {
+      alertBar.classList.remove('show');
+    }, 2800);
+  }
+
+  // ---------- Utilities ----------
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ---------- Init ----------
+
+  ensureSeedData();
+  populateBusinessSelect();
+
+  // Keep the barcode field focused whenever the window regains focus,
+  // as long as a business session is active and no input is being edited.
+  window.addEventListener('focus', () => {
+    if (activeBusinessId && document.activeElement !== barcodeInput) {
+      focusBarcodeInput();
+    }
+  });
+
+})();
+</script>
+
+</body>
+</html>
